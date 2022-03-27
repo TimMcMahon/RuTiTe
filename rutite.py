@@ -20,22 +20,22 @@ import matplotlib.pyplot as plt
 ready_led = 17
 running_led = 27
 complete_led = 22
-#sensor_ceiling = 88000.0
-sensor_ceiling = 120000.0
+sensor_ceiling = 88000.0
+light_sensor = None
 
 def init(options):
     i2c = busio.I2C(board.SCL, board.SDA)
-    light_sensor = None
     if options.light_sensor:
         if options.light_sensor == 'veml7700':
             light_sensor = adafruit_veml7700.VEML7700(i2c)
             light_sensor.light_gain = light_sensor.ALS_GAIN_1_8
+            sensor_ceiling = 120000.0
         elif options.light_sensor == 'tsl2591':
             light_sensor = adafruit_tsl2591.TSL2591(i2c)
-            #light_sensor.gain = adafruit_tsl2591.GAIN_LOW
+            light_sensor.gain = adafruit_tsl2591.GAIN_LOW
     else:
         light_sensor = adafruit_tsl2591.TSL2591(i2c)
-        #light_sensor.gain = adafruit_tsl2591.GAIN_LOW
+        light_sensor.gain = adafruit_tsl2591.GAIN_LOW
 
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
