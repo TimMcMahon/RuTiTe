@@ -1,0 +1,4 @@
+adafruit-blinka
+adafruit-circuitpython-tsl2591
+adafruit-circuitpython-veml7700
+matplotlib

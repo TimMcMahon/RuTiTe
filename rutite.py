@@ -11,6 +11,7 @@ import csv
 import board
 import busio
 import adafruit_tsl2591
+import adafruit_veml7700
 import RPi.GPIO as GPIO
 import argparse
 import sys
@@ -19,12 +20,23 @@ import matplotlib.pyplot as plt
 ready_led = 17
 running_led = 27
 complete_led = 22
-sensor_ceiling = 88000.0
+#sensor_ceiling = 88000.0
+sensor_ceiling = 120000.0
 
-def init():
+def init(options):
     i2c = busio.I2C(board.SCL, board.SDA)
-    sensor = adafruit_tsl2591.TSL2591(i2c)
-    #sensor.gain = adafruit_tsl2591.GAIN_LOW
+    light_sensor = None
+    if options.light_sensor:
+        if options.light_sensor == 'veml7700':
+            light_sensor = adafruit_veml7700.VEML7700(i2c)
+            light_sensor.light_gain = light_sensor.ALS_GAIN_1_8
+        elif options.light_sensor == 'tsl2591':
+            light_sensor = adafruit_tsl2591.TSL2591(i2c)
+            #light_sensor.gain = adafruit_tsl2591.GAIN_LOW
+    else:
+        light_sensor = adafruit_tsl2591.TSL2591(i2c)
+        #light_sensor.gain = adafruit_tsl2591.GAIN_LOW
+
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(ready_led, GPIO.OUT)
@@ -33,7 +45,7 @@ def init():
     GPIO.output(ready_led, GPIO.HIGH)
     GPIO.output(running_led, GPIO.LOW)
     GPIO.output(complete_led, GPIO.LOW)
-    return sensor
+    return light_sensor
 
 def build_parser():
     parser = argparse.ArgumentParser()
@@ -58,6 +70,8 @@ def build_parser():
             help = 'record relative time, with the first measurement at t=0', action='store_true')
     parser.add_argument('-g', '--graph-title', dest='graph_title',
             help = 'string to use for a basic plot of the recorded data - only works if you let the script run until it stops based on time or percent output')
+    parser.add_argument('-ls', '--light-sensor', dest='light_sensor', choices=['tsl2591', 'veml7700'],
+            help = 'light sensor')
     return parser
 
 def load_options():
@@ -234,8 +248,8 @@ def runtimeplot(options):
     print('plot saved')
 
 def main():
-    sensor = init()
     options = load_options()
+    sensor = init(options)
     add_csv_header(options.filename)
     core(options, sensor)
     if options.graph_title:

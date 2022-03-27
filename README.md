@@ -31,6 +31,8 @@ If you want to get fancy, there's plenty of configurability available.
 - `-pp` and `pd` both determine how often updates are printed to the terminal. If you wanted an update every time the output had changed by 10%, or every 30 minutes (whichever came first), you would run `python3 rutite.py -pp 10 -pd 30`.
 - `-r` records relative time alongside the absolute time. If you're plotting the results afterwards, this makes sure the graph will start at 0 - but it will make the recorded file size a bit bigger.
 - `-g` outputs a plot when the script is done. Right now this only works when either `-d`, `-tp`, or both is used and you let the script run until it's done.
+- `-ls` or `--light-sensor` may be used to select a light sensor (i.e. tsl2591 or veml7700) (default: tsl2591)  
+
 ## Example
 I ran the following test of the highest mode of a lumintop FW1A:
 ```
