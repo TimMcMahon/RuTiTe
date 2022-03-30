@@ -12,6 +12,7 @@ import board
 import busio
 import adafruit_tsl2591
 import adafruit_veml7700
+import adafruit_mcp9808
 import RPi.GPIO as GPIO
 import argparse
 import sys
@@ -22,6 +23,8 @@ running_led = 27
 complete_led = 22
 sensor_ceiling = 88000.0
 light_sensor = None
+temp_sensor = None
+
 
 def init(options):
     i2c = busio.I2C(board.SCL, board.SDA)
@@ -37,6 +40,12 @@ def init(options):
         light_sensor = adafruit_tsl2591.TSL2591(i2c)
         light_sensor.gain = adafruit_tsl2591.GAIN_LOW
 
+    if options.temp_sensor:
+        if options.temp_sensor == 'mcp9808':
+            temp_sensor = adafruit_mcp9808.MCP9808(i2c)
+    else:
+        temp_sensor = None
+
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(ready_led, GPIO.OUT)
@@ -45,7 +54,8 @@ def init(options):
     GPIO.output(ready_led, GPIO.HIGH)
     GPIO.output(running_led, GPIO.LOW)
     GPIO.output(complete_led, GPIO.LOW)
-    return light_sensor
+    return light_sensor, temp_sensor
+
 
 def build_parser():
     parser = argparse.ArgumentParser()
@@ -72,7 +82,10 @@ def build_parser():
             help = 'string to use for a basic plot of the recorded data - only works if you let the script run until it stops based on time or percent output')
     parser.add_argument('-ls', '--light-sensor', dest='light_sensor', choices=['tsl2591', 'veml7700'],
             help = 'light sensor')
+    parser.add_argument('-ts', '--temp-sensor', dest='temp_sensor', choices=['mcp9808'],
+            help = 'temp sensor')
     return parser
+
 
 def load_options():
     parser = build_parser()
@@ -87,19 +100,23 @@ def load_options():
     print ("{}Saving as {}".format(current_timestamp(),options.filename))
     return options
 
+
 def blink_led(pin):
     GPIO.output(pin, not GPIO.input(pin))
+
 
 def current_timestamp():
     return time.strftime("%H:%M:%S ", time.localtime())
 
+
 def add_csv_header(filename):
     with open (filename, "a") as f:
         writer = csv.writer(f, delimiter=",")
-        writer.writerow(["time", "lux", "[relative time]", "[lumens]"])
+        writer.writerow(["time", "lux", "temp", "[relative time]", "[lumens]"])
         blink_led(running_led)
 
-def write_to_csv(options, t, lux, t_test_start):
+
+def write_to_csv(options, t, lux, temp, t_test_start):
     if options.relative_time:
         t_relative = t - t_test_start
     else:
@@ -112,17 +129,21 @@ def write_to_csv(options, t, lux, t_test_start):
 
     with open (options.filename, "a") as f:
         writer = csv.writer(f, delimiter=",")
-        writer.writerow([t, lux, t_relative, lumens])
+        writer.writerow([t, lux, temp, t_relative, lumens])
 
-def core(options, sensor):
+
+def core(options, light_sensor, temp_sensor):
     state = 'set_baseline'
     baseline_sum = 0.0
     baseline_measurement_count = 0
     ceiling_reached = False
 
     while state != 'exit':
-        lux = sensor.lux
+        lux = light_sensor.lux
         t = time.time()
+        temp = None
+        if temp_sensor:
+            temp = temp_sensor.temperature
 
         if lux == sensor_ceiling and ceiling_reached == False:
             print("{}Sensor is saturated. The light is too bright to measure with your current setup. Consider adding a filter between the source and the sensor. The test will continue, but will be cut off at the high end.".format(current_timestamp()))
@@ -136,7 +157,7 @@ def core(options, sensor):
             blink_led(ready_led)
 
         if state in ['sampling_period', 'main_recording']:
-            write_to_csv(options, t, lux, t_test_start)
+            write_to_csv(options, t, lux, temp, t_test_start)
             blink_led(running_led)
 
         if state == 'sampling_period':
@@ -215,6 +236,7 @@ def core(options, sensor):
     GPIO.output(running_led, GPIO.LOW)
     GPIO.output(complete_led, GPIO.HIGH)
 
+
 def runtimeplot(options):
     
     print('Creating plot...')
@@ -222,6 +244,7 @@ def runtimeplot(options):
 
     time = []
     brightness = []
+    temperature = []
 
     with open(options.filename, 'r') as csvfile:
         data = csv.reader(csvfile, delimiter=',')
@@ -229,31 +252,40 @@ def runtimeplot(options):
         for row in data:
             time.append(float(row[0]))
             if options.lux_to_lumen_factor:
-                brightness.append(float(row[3]))
-                y_label = 'Output [calculated lumens]'
+                brightness.append(float(row[4]))
+                y_label = 'Lumens'
             else:
                 brightness.append(float(row[1]))
-                y_label = 'Output [detected lux]'
+                y_label = 'Lux'
+            if options.temp_sensor:
+                temperature.append(float(row[2]))
 
     t_test_start = time[1]
     time = [(x - t_test_start) / 60 for x in time]
-    plt.plot(time, brightness)
-    plt.xlabel('Time [minutes]')
-    plt.ylabel(y_label)
+    ax = fig.add_subplot(111)
+    ax.plot(time, brightness, color="blue")
+    ax.set_xlabel('Duration (minutes)')
+    ax.set_ylabel(y_label, color="blue")
+    if options.temp_sensor:
+        ax2 = ax.twinx()
+        ax2.plot(time, temperature, color="red")
+        ax2.set_ylabel('Temperature (C)', color="red")
     plt.title(options.graph_title)
     plt.grid(True)
     plt.xlim(left=0)
     plt.ylim(bottom=0)
-    plt.savefig(options.graph_title+'.png')
+    plt.savefig(options.graph_title.replace(' ', '_').lower()+'.png')
     print('plot saved')
+
 
 def main():
     options = load_options()
-    sensor = init(options)
+    light_sensor, temp_sensor = init(options)
     add_csv_header(options.filename)
-    core(options, sensor)
+    core(options, light_sensor, temp_sensor)
     if options.graph_title:
         runtimeplot(options)
+
 
 if __name__ == "__main__":
     main()
