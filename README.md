@@ -13,6 +13,8 @@ To install this script, just copy rutite.py to the directory you're working in. 
 - argparse
 - sys
 - matplotlib
+- pandas
+- numpy
 
 Run the following commands to install all the required dependencies on a fresh install of Raspberry Pi OS:
 
