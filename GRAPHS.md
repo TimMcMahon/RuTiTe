@@ -19,6 +19,8 @@ python3 runtime_plot.py \
   --watermark "Author Watermark"
 ```
 
+![runtime_plot](https://github.com/TimMcMahon/RuTiTe/blob/master/flashlight_turbo.png)
+
 ## multi_runtime_plot.py
 
 Produce a graph with multiple CSV files that were genernated with rutite.py  
@@ -34,3 +36,5 @@ python3 multi_runtime_plot.py \
   --watermark-x 0.1 --watermark-y 0.15 \
   --watermark "Author Watermark"
 ```
+
+![multi_runtime_plot](https://github.com/TimMcMahon/RuTiTe/blob/master/flashlight.png)
