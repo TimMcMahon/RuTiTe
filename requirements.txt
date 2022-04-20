@@ -3,3 +3,5 @@ adafruit-circuitpython-tsl2591
 adafruit-circuitpython-veml7700
 adafruit-circuitpython-mcp9808
 matplotlib
+pandas
+numpy
