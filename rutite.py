@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-# runtimetest.py
-# v 0.0.4-alpha pre-release
 
 from time import strftime, gmtime, sleep
 import time
@@ -63,7 +61,7 @@ def build_parser():
             default=time.strftime('RuTiTe%Y-%m-%d-%H.%M.%S.csv', time.localtime()),
             help = 'filename for the csv output')
     parser.add_argument('-i','--interval', dest='delay', type=float, 
-            default = 1.0, 
+            default = 0.1, 
             help = 'interval between measurements in seconds (halved during the 30s sampling period at the beginning of the test)')
     parser.add_argument('-d','--duration', dest='test_duration', type=float, 
             help = 'maximum duration of the test in minutes')
@@ -112,24 +110,26 @@ def current_timestamp():
 def add_csv_header(filename):
     with open (filename, "a") as f:
         writer = csv.writer(f, delimiter=",")
-        writer.writerow(["time", "lux", "temp", "[relative time]", "[lumens]"])
+        writer.writerow(["Time", "Lux", "[relative time]", "Duration", "Lumens", "Temperature (C)"])
         blink_led(running_led)
 
 
 def write_to_csv(options, t, lux, temp, t_test_start):
     if options.relative_time:
         t_relative = t - t_test_start
+        duration = t_relative / 86400
     else:
         t_relative = ''
+        duration = ''
 
     if options.lux_to_lumen_factor:
-        lumens = lux * options.lux_to_lumen_factor
+        lumens = lux / options.lux_to_lumen_factor
     else:
         lumens = ''
 
     with open (options.filename, "a") as f:
         writer = csv.writer(f, delimiter=",")
-        writer.writerow([t, lux, temp, t_relative, lumens])
+        writer.writerow([t, lux, t_relative, duration, lumens, temp])
 
 
 def core(options, light_sensor, temp_sensor):
@@ -198,7 +198,7 @@ def core(options, light_sensor, temp_sensor):
             sampling_lux_min = sensor_ceiling
             sampling_lux_max = 0.0
             print ("{}Light detected. Recording started.".format(current_timestamp()))
-            time.sleep(1.0)
+            time.sleep(0.1)
 
         if state == 'sampling_period' and t >= t_sampling_complete:
             state = 'main_recording'
@@ -216,20 +216,22 @@ def core(options, light_sensor, temp_sensor):
             percent_output = 100.0
 
         if state == 'main_recording':
-            if options.termination_percentage and percent_output <= options.termination_percentage:
-                t_remaining = (t - t_test_start) * 0.05
-                print("{}Output has reached {:.0f}% ({:.0f} lux), which is at or below your {}% target.".format(current_timestamp(), percent_output, lux, options.termination_percentage))
-                last_print_time = t
-                last_printed_percent = percent_output
-                options.termination_percentage = False
-                if options.test_duration and (t + t_remaining) > options.test_duration:
-                    t_remaining = options.test_duration - t
-                else:
-                    t_test_complete = t + t_remaining
-                    options.test_duration = t - t_remaining + t_remaining
-                print("\tJust collecting a bit more data. The test will end in {:.1f} minutes.".format(t_remaining/60))
             if options.test_duration and t >= t_test_complete:
                 state = 'exit'
+            if options.termination_percentage and percent_output <= options.termination_percentage:
+                state = 'checking_termination'
+                print("{}Output has reached {:.0f}% ({:.0f} lux), which is at or below your {}% target. The test will stop if output doesn't increase within 5 minutes.".format(current_timestamp(), percent_output, lux, options.termination_percentage))
+                last_print_time = t
+                last_printed_percent = percent_output
+                t_output_termination = t + 5.0 * 60.0
+                options.test_duration = True
+                
+        if state == 'checking_termination':
+            if t > t_output_termination:
+                state = 'exit'
+            elif percent_output > options.termination_percentage:
+                state = 'main_recording'
+                print('{}Output increased. Continuing to record.'.format(current_timestamp()))
 
     print("{}Test complete".format(current_timestamp()))
     GPIO.output(ready_led, GPIO.LOW)
@@ -258,7 +260,7 @@ def runtimeplot(options):
                 brightness.append(float(row[1]))
                 y_label = 'Lux'
             if options.temp_sensor:
-                temperature.append(float(row[2]))
+                temperature.append(float(row[5]))
 
     t_test_start = time[1]
     time = [(x - t_test_start) / 60 for x in time]
