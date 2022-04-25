@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 from time import strftime, gmtime, sleep
-from datetime import timedelta
+from datetime import datetime, timedelta
+from string import Template
 import time
 import math
 import os.path
@@ -17,7 +18,6 @@ import matplotlib.font_manager
 
 plt.rcParams["font.family"] = 'sans-serif'
 PX = 1/plt.rcParams['figure.dpi']
-LUMENS_STEP = 100
 TEMP_STEP = 2
 SMALL_SIZE = 8
 MEDIUM_SIZE = 9 
@@ -34,6 +34,21 @@ COLOUR_MEDIUM = 'xkcd:goldenrod'
 COLOUR_LOW = 'xkcd:kelly green'
 
 
+class DeltaTemplate(Template):
+    delimiter = "%"
+
+
+def strfdelta(tdelta, fmt):
+    d = {"D": tdelta.days}
+    hours, rem = divmod(int(tdelta.total_seconds()), 3600)
+    minutes, seconds = divmod(rem, 60)
+    d["H"] = '{:02d}'.format(hours)
+    d["M"] = '{:02d}'.format(minutes)
+    d["S"] = '{:02d}'.format(seconds)
+    t = DeltaTemplate(fmt)
+    return t.substitute(**d)
+
+
 def build_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-in','--inputfile', dest='filename', 
@@ -46,9 +61,15 @@ def build_parser():
             help = 'graph title')
     parser.add_argument('-gs', '--graph-subtitle', dest='graph_subtitle',
             help = 'graph subtitle')
+    parser.add_argument('-yl', '--y-label', dest='y_label',
+            default = 'Lumens',
+            help = 'y label (e.g. Lumens)')
     parser.add_argument('-glmin', '--graph-lumens-min', dest='graph_lumens_min', type=int,
             default = 0,
             help = 'graph lumens min')
+    parser.add_argument('-ls', '--lumens-step', dest='lumens_step', type=int,
+            default = 100,
+            help = 'lumens step')
     parser.add_argument('-glmax', '--graph-lumens-max', dest='graph_lumens_max', type=int,
             default = 1800,
             help = 'graph lumens max')
@@ -114,24 +135,20 @@ def runtimeplot(options):
 
     twin = ax.twinx()
 
-    # Make Duration start at zero.
-    data.Duration = data.Duration.map(lambda x: x * 86400)
-    duration_offset = data.Duration.min()
-    print(f"duration_offset = {duration_offset}")
-    data.Duration = data.Duration.map(lambda x: x - duration_offset)
-    duration_offset = data.Duration.min()
-    print(f"duration_offset = {duration_offset}")
+    # Make Duration start at zero (use Time to calculate duration).
+    time_start = datetime.fromtimestamp(data.Time.min())
+    data.Time = data.Time.map(lambda x: (datetime.fromtimestamp(x) - time_start).total_seconds())
 
     data.Lumens = data.Lux / options.lux_to_lumen_factor
-    ax.plot(data.Duration, data.Lumens, color=COLOUR_LUMENS, label='Lumens')
+    ax.plot(data.Time, data.Lumens, color=COLOUR_LUMENS, label=options.y_label)
     ax.set_xlabel('Duration hh:mm:ss')
-    ax.set_ylabel('Lumens')
+    ax.set_ylabel(options.y_label)
     ax.set_ylim((options.graph_lumens_min, options.graph_lumens_max))
-    ax.set_yticks([x for x in range(options.graph_lumens_min, options.graph_lumens_max + LUMENS_STEP, LUMENS_STEP)])
-    ax.yaxis.set_minor_locator(MultipleLocator(100))
+    ax.set_yticks([x for x in range(options.graph_lumens_min, options.graph_lumens_max + options.lumens_step, options.lumens_step)])
+    ax.yaxis.set_minor_locator(MultipleLocator(options.lumens_step))
     ax.yaxis.set_minor_formatter(NullFormatter())
 
-    formatter = FuncFormatter(lambda s, x: time.strftime('%H:%M:%S', time.gmtime(s)))
+    formatter = FuncFormatter(lambda s, x: strfdelta(((time_start + pd.to_timedelta(s, unit='s')) - time_start), '%H:%M:%S'))
     ax.xaxis.set_major_formatter(formatter)
     ax.xaxis.set_minor_locator(MultipleLocator(options.duration_minor))
     ax.set_xticks([x for x in range(0, (options.duration_max * 60) + 1, options.duration_major)])
@@ -140,7 +157,7 @@ def runtimeplot(options):
     x_ticks[-1].label1.set_visible(False)
 
     twin.plot(
-        data.Duration,
+        data.Time,
         data['Temperature (C)'],
         color=COLOUR_TEMP,
         label='Temperature (C)'
