@@ -1,7 +1,11 @@
+pip
+setuptools
+wheel
 adafruit-blinka
 adafruit-circuitpython-tsl2591
 adafruit-circuitpython-veml7700
 adafruit-circuitpython-mcp9808
+adafruit-circuitpython-mcp9600
 matplotlib
 pandas
 numpy

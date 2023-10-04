@@ -55,7 +55,7 @@ def build_parser():
             help = 'filename for the csv input')
     parser.add_argument('-lf', '--lux-to-lumen-factor', dest='lux_to_lumen_factor', type=float, 
             help = 'lux to lumen conversion factor for use in calibrated integrating enclosures')
-    parser.add_argument('-ts', '--temp-sensor', dest='temp_sensor', choices=['mcp9808'],
+    parser.add_argument('-ts', '--temp-sensor', dest='temp_sensor', choices=['mcp9600', 'mcp9808'],
             help = 'temp sensor')
     parser.add_argument('-g', '--graph-title', dest='graph_title',
             help = 'graph title')
@@ -128,14 +128,17 @@ def runtimeplot(options):
     fig, ax = plt.subplots(figsize=(options.width*PX, options.height*PX))
     plt.suptitle(options.graph_title + '\n', fontsize=TITLE_SIZE, x=0.01, ha='left')
     plt.rcParams['axes.titlepad'] = TITLE_SIZE
-    fig.text(0.01, 0.92, options.graph_subtitle, fontsize=SUBTITLE_SIZE, ha='left', alpha=0.8)
+    #fig.text(0.01, 0.92, options.graph_subtitle, fontsize=SUBTITLE_SIZE, ha='left', alpha=0.8)
+    fig.text(0.011, 0.938, options.graph_subtitle, fontsize=SUBTITLE_SIZE, ha='left', alpha=0.8)
 
     plt.grid(True, which='both')
     ax.minorticks_on()
 
-    twin = ax.twinx()
+    if options.temp_sensor:
+        twin = ax.twinx()
 
     # Make Duration start at zero (use Time to calculate duration).
+    # FIXME is this working? Chopped start off?
     time_start = datetime.fromtimestamp(data.Time.min())
     data.Time = data.Time.map(lambda x: (datetime.fromtimestamp(x) - time_start).total_seconds())
 
@@ -156,23 +159,40 @@ def runtimeplot(options):
     x_ticks[0].label1.set_visible(False)
     x_ticks[-1].label1.set_visible(False)
 
-    twin.plot(
-        data.Time,
-        data['Temperature (C)'],
-        color=COLOUR_TEMP,
-        label='Temperature (C)'
-    )
-    twin.set_ylabel('Temperature (C)')
-    twin.set_ylim((options.graph_temp_min, options.graph_temp_max))
-    twin.yaxis.set_major_locator(MultipleLocator(2))
-    twin.yaxis.set_major_formatter(FormatStrFormatter('%d'))
-    twin.yaxis.set_minor_locator(MultipleLocator(1))
-    twin.yaxis.set_minor_formatter(NullFormatter())
+    if options.temp_sensor: 
+        twin.plot(
+            data.Time,
+            data['Temperature (C)'],
+            color=COLOUR_TEMP,
+            label='Temperature (C)'
+        )
+        twin.set_ylabel('Temperature (C)')
+        twin.set_ylim((options.graph_temp_min, options.graph_temp_max))
+        twin.yaxis.set_major_locator(MultipleLocator(2))
+        twin.yaxis.set_major_formatter(FormatStrFormatter('%d'))
+        twin.yaxis.set_minor_locator(MultipleLocator(1))
+        twin.yaxis.set_minor_formatter(NullFormatter())
 
     fig.text(options.watermark_x, options.watermark_y, options.watermark, alpha=0.5, fontsize=TITLE_SIZE, ha='left')
 
     plt.xlim(left=0)
     plt.xlim(right=options.duration_max)
+
+    # Hide borders
+    ax.spines['left'].set_visible(False)
+#    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    if options.temp_sensor: 
+        twin.spines['left'].set_visible(False)
+#    twin.spines['right'].set_visible(False)
+        twin.spines['top'].set_visible(False)
+    # Hide left ticks lines
+    y_ticks = ax.yaxis.get_major_ticks()
+    [t.tick1line.set_visible(False) for t in y_ticks]
+    if options.temp_sensor: 
+        y_ticks = twin.yaxis.get_major_ticks()
+        [t.tick1line.set_visible(False) for t in y_ticks]
+
 
     lines_labels = [ax.get_legend_handles_labels() for ax in fig.axes]
     lines, labels = [reversed(sum(lol, [])) for lol in zip(*lines_labels)]
@@ -186,14 +206,16 @@ def runtimeplot(options):
         loc='upper center',
         frameon=False,
         mode='expand',
-        bbox_to_anchor=(0.5, 0.92),
+#        bbox_to_anchor=(0.5, 0.92),
+        bbox_to_anchor=(0.5, 0.938),
         borderaxespad=0,
         bbox_transform=fig.transFigure,
         handlelength=0.7
     )
 
-    plt.tight_layout()
-    plt.savefig(options.graph_title.replace(' ', '_').lower()+'.png')
+    #plt.tight_layout()
+    plt.tight_layout(rect=[0, 0, 1, 0.99])
+    plt.savefig(options.graph_title.replace(' ', '-').lower()+'.png')
     print('plot saved')
 
 

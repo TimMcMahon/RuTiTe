@@ -11,6 +11,7 @@ import busio
 import adafruit_tsl2591
 import adafruit_veml7700
 import adafruit_mcp9808
+import adafruit_mcp9600
 import RPi.GPIO as GPIO
 import argparse
 import sys
@@ -30,17 +31,22 @@ def init(options):
         if options.light_sensor == 'veml7700':
             light_sensor = adafruit_veml7700.VEML7700(i2c)
             light_sensor.light_gain = light_sensor.ALS_GAIN_1_8
+            light_sensor.light_integration_time = light_sensor.ALS_100MS
             sensor_ceiling = 120000.0
         elif options.light_sensor == 'tsl2591':
             light_sensor = adafruit_tsl2591.TSL2591(i2c)
             light_sensor.gain = adafruit_tsl2591.GAIN_LOW
+            #light_sensor.gain = adafruit_tsl2591.GAIN_HIGH
     else:
         light_sensor = adafruit_tsl2591.TSL2591(i2c)
         light_sensor.gain = adafruit_tsl2591.GAIN_LOW
+        #light_sensor.gain = adafruit_tsl2591.GAIN_HIGH
 
     if options.temp_sensor:
         if options.temp_sensor == 'mcp9808':
             temp_sensor = adafruit_mcp9808.MCP9808(i2c)
+        elif options.temp_sensor == 'mcp9600':
+            temp_sensor = adafruit_mcp9600.MCP9600(i2c)
     else:
         temp_sensor = None
 
@@ -80,7 +86,7 @@ def build_parser():
             help = 'string to use for a basic plot of the recorded data - only works if you let the script run until it stops based on time or percent output')
     parser.add_argument('-ls', '--light-sensor', dest='light_sensor', choices=['tsl2591', 'veml7700'],
             help = 'light sensor')
-    parser.add_argument('-ts', '--temp-sensor', dest='temp_sensor', choices=['mcp9808'],
+    parser.add_argument('-ts', '--temp-sensor', dest='temp_sensor', choices=['mcp9600', 'mcp9808'],
             help = 'temp sensor')
     return parser
 

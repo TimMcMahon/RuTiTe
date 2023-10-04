@@ -16,11 +16,19 @@ from matplotlib.ticker import (MultipleLocator, FormatStrFormatter,
                                AutoMinorLocator, FuncFormatter, NullFormatter)
 import matplotlib.font_manager
 
-CSV_COUNT = 3
-FILE_TURBO = 'flashlight_turbo.csv'
-FILE_HIGH = 'flashlight_high.csv'
-FILE_MEDIUM = 'flashlight_medium.csv'
-FILE_LOW = 'flashlight_low.csv'
+CSV_COUNT = 6
+FILE_1 = 'imalent_ms12_mini_turbo.csv'
+FILE_2 = 'imalent_ms12_mini_high.csv'
+FILE_3 = 'imalent_ms12_mini_middle_2.csv'
+FILE_4 = 'imalent_ms12_mini_middle_1.csv'
+FILE_5 = 'imalent_ms12_mini_middle_low.csv'
+FILE_6 = 'imalent_ms12_mini_low.csv'
+LABEL_1 = 'Turbo'
+LABEL_2 = 'High'
+LABEL_3 = 'Middle 2'
+LABEL_4 = 'Middle 1'
+LABEL_5 = 'Middle Low'
+LABEL_6 = 'Low'
 
 plt.rcParams["font.family"] = 'sans-serif'
 PX = 1/plt.rcParams['figure.dpi']
@@ -34,10 +42,12 @@ SUBTITLE_SIZE = 10
 # https://xkcd.com/color/rgb/
 COLOUR_LUMENS = 'xkcd:bright blue'
 COLOUR_TEMP = 'xkcd:bright red'
-COLOUR_TURBO = 'xkcd:bright blue'
-COLOUR_HIGH = 'xkcd:bright red'
-COLOUR_MEDIUM = 'xkcd:goldenrod'
-COLOUR_LOW = 'xkcd:kelly green'
+COLOUR_1 = 'xkcd:bright blue'
+COLOUR_2 = 'xkcd:bright red'
+COLOUR_3 = 'xkcd:goldenrod'
+COLOUR_4 = 'xkcd:kelly green'
+COLOUR_5 = 'xkcd:orange'
+COLOUR_6 = 'xkcd:light magenta'
 
 class DeltaTemplate(Template):
     delimiter = "%"
@@ -60,7 +70,7 @@ def build_parser():
             help = 'filename for the csv input')
     parser.add_argument('-lf', '--lux-to-lumen-factor', dest='lux_to_lumen_factor', type=float, 
             help = 'lux to lumen conversion factor for use in calibrated integrating enclosures')
-    parser.add_argument('-ts', '--temp-sensor', dest='temp_sensor', choices=['mcp9808'],
+    parser.add_argument('-ts', '--temp-sensor', dest='temp_sensor', choices=['mcp9600', 'mcp9808'],
             help = 'temp sensor')
     parser.add_argument('-g', '--graph-title', dest='graph_title',
             help = 'graph title')
@@ -127,29 +137,80 @@ def convert_time_to_seconds(data):
 def runtimeplot(options):
     
     print('Creating plot...')
-    data_low = pd.read_csv(FILE_LOW)
-    time_start = datetime.fromtimestamp(data_low.Time.min()) # place after first CSV
-    data_low.Time = convert_time_to_seconds(data_low)
-    data_low.set_index('Time', drop=False)
-    data_medium = pd.read_csv(FILE_MEDIUM)
-    data_medium.Time = convert_time_to_seconds(data_medium)
-    data_medium.set_index('Time', drop=False)
-    data_high = pd.read_csv(FILE_HIGH)
-    data_high.Time = convert_time_to_seconds(data_high)
-    data_high.set_index('Time', drop=False)
-    data_turbo = pd.read_csv(FILE_TURBO)
-    data_turbo.Time = convert_time_to_seconds(data_turbo)
-    data_turbo.set_index('Time', drop=False)
+    if CSV_COUNT >= 6:
+      data_6 = pd.read_csv(FILE_6)
+      if CSV_COUNT == 6:
+        time_start = datetime.fromtimestamp(data_6.Time.min()) # place after first CSV
+      data_6.Time = convert_time_to_seconds(data_6)
+      data_6.set_index('Time', drop=False)
+    if CSV_COUNT >= 5:
+      data_5 = pd.read_csv(FILE_5)
+      if CSV_COUNT == 5:
+        time_start = datetime.fromtimestamp(data_5.Time.min()) # place after first CSV
+      data_5.Time = convert_time_to_seconds(data_5)
+      data_5.set_index('Time', drop=False)
+    if CSV_COUNT >= 4:
+      data_4 = pd.read_csv(FILE_4)
+      if CSV_COUNT == 4:
+        time_start = datetime.fromtimestamp(data_4.Time.min()) # place after first CSV
+      data_4.Time = convert_time_to_seconds(data_4)
+      data_4.set_index('Time', drop=False)
+    if CSV_COUNT >= 3:
+      data_3 = pd.read_csv(FILE_3)
+      if CSV_COUNT == 3:
+        time_start = datetime.fromtimestamp(data_3.Time.min()) # place after first CSV
+      data_3.Time = convert_time_to_seconds(data_3)
+      data_3.set_index('Time', drop=False)
+    if CSV_COUNT >= 2:
+      data_2 = pd.read_csv(FILE_2)
+      if CSV_COUNT == 2:
+        time_start = datetime.fromtimestamp(data_2.Time.min()) # place after first CSV
+      data_2.Time = convert_time_to_seconds(data_2)
+      data_2.set_index('Time', drop=False)
+    if CSV_COUNT >= 1:
+      data_1 = pd.read_csv(FILE_1)
+      data_1.Time = convert_time_to_seconds(data_1)
+      if CSV_COUNT == 1:
+        time_start = datetime.fromtimestamp(data_1.Time.min()) # place after first CSV
+      data_1.set_index('Time', drop=False)
 
     #Time,Lux,[relative time],Duration,Lumens,Temperature (C)
-    data_turbo.columns = ['Time', 'Turbo', 'rel_time', 'Duration', 'Lumens', 'temp']
-    data_high.columns = ['Time', 'High', 'rel_time', 'Duration', 'Lumens', 'temp']
-    data_medium.columns = ['Time', 'Medium', 'rel_time', 'Duration', 'Lumens', 'temp']
-    data_low.columns = ['Time', 'Low', 'rel_time', 'Duration', 'Lumens', 'temp']
 
-    data = data_low.join(data_medium[['Medium']])
-    data = data.join(data_high[['High']])
-    data = data.join(data_turbo[['Turbo']])
+    if CSV_COUNT >= 1:
+      data_1.columns = ['Time', 'FILE_1', 'rel_time', 'Duration', 'Lumens', 'temp']
+    if CSV_COUNT >= 2:
+      data_2.columns = ['Time', 'FILE_2', 'rel_time', 'Duration', 'Lumens', 'temp']
+    if CSV_COUNT >= 3:
+      data_3.columns = ['Time', 'FILE_3', 'rel_time', 'Duration', 'Lumens', 'temp']
+    if CSV_COUNT >= 4:
+      data_4.columns = ['Time', 'FILE_4', 'rel_time', 'Duration', 'Lumens', 'temp']
+    if CSV_COUNT >= 5:
+      data_5.columns = ['Time', 'FILE_5', 'rel_time', 'Duration', 'Lumens', 'temp']
+    if CSV_COUNT >= 6:
+      data_6.columns = ['Time', 'FILE_6', 'rel_time', 'Duration', 'Lumens', 'temp']
+
+    # FIXME iterate over a collection instead....
+    if CSV_COUNT == 6:
+      data = data_6.join(data_5[['FILE_5']])
+    if CSV_COUNT == 5:
+      data = data_5.join(data_4[['FILE_4']])
+    if CSV_COUNT == 4:
+      data = data_4.join(data_3[['FILE_3']])
+    if CSV_COUNT == 3:
+      data = data_3.join(data_2[['FILE_2']])
+    if CSV_COUNT == 2:
+      data = data_2.join(data_1[['FILE_1']])
+    if CSV_COUNT == 1:
+      data = data_1
+
+    if CSV_COUNT >= 6:
+      data = data.join(data_4[['FILE_4']])
+    if CSV_COUNT >= 5:
+      data = data.join(data_3[['FILE_3']])
+    if CSV_COUNT >= 4:
+      data = data.join(data_2[['FILE_2']])
+    if CSV_COUNT >= 3:
+      data = data.join(data_1[['FILE_1']])
     
     plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
     plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
@@ -162,20 +223,37 @@ def runtimeplot(options):
     fig, ax = plt.subplots(figsize=(options.width*PX, options.height*PX))
     plt.suptitle(options.graph_title + '\n', fontsize=TITLE_SIZE, x=0.01, ha='left')
     plt.rcParams['axes.titlepad'] = TITLE_SIZE
-    fig.text(0.01, 0.92, options.graph_subtitle, fontsize=SUBTITLE_SIZE, ha='left', alpha=0.8)
+    #fig.text(0.01, 0.92, options.graph_subtitle, fontsize=SUBTITLE_SIZE, ha='left', alpha=0.8)
+    fig.text(0.011, 0.938, options.graph_subtitle, fontsize=SUBTITLE_SIZE, ha='left', alpha=0.8)
 
     plt.grid(True, which='both')
     ax.minorticks_on()
 
-    data.Turbo = data.Turbo / options.lux_to_lumen_factor
-    data.High = data.High / options.lux_to_lumen_factor
-    data.Medium = data.Medium / options.lux_to_lumen_factor
-    data.Low = data.Low / options.lux_to_lumen_factor
+    if CSV_COUNT >= 1:
+      data.FILE_1 = data.FILE_1 / options.lux_to_lumen_factor 
+    if CSV_COUNT >= 2:
+      data.FILE_2 = data.FILE_2 / options.lux_to_lumen_factor
+    if CSV_COUNT >= 3:
+      data.FILE_3 = data.FILE_3 / options.lux_to_lumen_factor
+    if CSV_COUNT >= 4:
+      data.FILE_4 = data.FILE_4 / options.lux_to_lumen_factor
+    if CSV_COUNT >= 5:
+      data.FILE_5 = data.FILE_5 / options.lux_to_lumen_factor
+    if CSV_COUNT >= 6:
+      data.FILE_6 = data.FILE_6 / options.lux_to_lumen_factor
 
-    ax.plot(data.Time, data.Turbo, color=COLOUR_TURBO, label='Turbo')
-    ax.plot(data.Time, data.High, color=COLOUR_HIGH, label='High')
-    ax.plot(data.Time, data.Medium, color=COLOUR_MEDIUM, label='Medium')
-    ax.plot(data.Time, data.Low, color=COLOUR_LOW, label='Low')
+    if CSV_COUNT >= 1:
+      ax.plot(data.Time, data.FILE_1, color=COLOUR_1, label=LABEL_1)
+    if CSV_COUNT >= 2:
+      ax.plot(data.Time, data.FILE_2, color=COLOUR_2, label=LABEL_2)
+    if CSV_COUNT >= 3:
+      ax.plot(data.Time, data.FILE_3, color=COLOUR_3, label=LABEL_3)
+    if CSV_COUNT >= 4:
+      ax.plot(data.Time, data.FILE_4, color=COLOUR_4, label=LABEL_4)
+    if CSV_COUNT >= 5:
+      ax.plot(data.Time, data.FILE_5, color=COLOUR_5, label=LABEL_5)
+    if CSV_COUNT >= 6:
+      ax.plot(data.Time, data.FILE_6, color=COLOUR_6, label=LABEL_6)
     ax.set_xlabel('Duration hh:mm:ss')
     ax.set_ylabel(options.y_label)
     ax.set_ylim((options.graph_lumens_min, options.graph_lumens_max))
@@ -196,6 +274,16 @@ def runtimeplot(options):
     plt.xlim(left=0)
     plt.xlim(right=options.duration_max)
 
+    # Hide borders
+    ax.spines['left'].set_visible(False)
+    #ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    # Hide left ticks lines
+    y_ticks = ax.yaxis.get_major_ticks()
+    [t.tick1line.set_visible(False) for t in y_ticks]
+    #[t.tick2line.set_visible(False) for t in y_ticks]
+
+
     lines_labels = [ax.get_legend_handles_labels() for ax in fig.axes]
     lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
 
@@ -207,14 +295,16 @@ def runtimeplot(options):
         ncol=4444,
         loc='upper center',
         frameon=False,
-        bbox_to_anchor=(0.5, 0.92),
+#        bbox_to_anchor=(0.5, 0.92),
+        bbox_to_anchor=(0.5, 0.938),
         borderaxespad=0,
         bbox_transform=fig.transFigure,
         handlelength=0.7
     )
 
-    plt.tight_layout()
-    plt.savefig(options.graph_title.replace(' ', '_').lower()+'.png')
+    #plt.tight_layout()
+    plt.tight_layout(rect=[0, 0, 1, 0.99])
+    plt.savefig(options.graph_title.replace(' ', '-').lower()+'.png')
     print('plot saved')
 
 
